@@ -101,23 +101,14 @@ class ColumnsGame:
 
         column = self._current_faller['column']
 
-        if self.can_move_to_next_column():
-            if column > 0:
-                for row in range(len(self._board)):
-                    if self._board[row][column - 1] != ' ' and \
-                       self._board[row][column - 1] not in self._current_faller['jewels']:
-                        return
-                
-                self._clear_previous_position()
-
-                self._current_faller['column'] -= 1
-                for i, jewel in enumerate(self._current_faller['jewels'][::-1]):
-                    row = self._current_faller['position'] - i
-                    if row >= 0:
-                        self._board[row][column - 1] = f'[{jewel}]'
-                        
-                self._faller_should_freeze = False
-        else:
+        if self.can_move_to_next_left_column():
+            self._clear_previous_position()
+            self._current_faller['column'] -= 1
+            self._update_new_position()
+            self._faller_should_freeze = False
+            if self._is_current_faller_landed():
+                self.current_faller_change_jewel_if_fallen()
+        elif self._faller_should_freeze:
             self.freeze_current_faller()
 
     def move_current_faller_right(self) -> None:
@@ -130,23 +121,14 @@ class ColumnsGame:
 
         column = self._current_faller['column']
 
-        if self.can_move_to_next_column():
-            if column < len(self._board[0]) - 1:
-                for row in range(len(self._board)):
-                    if self._board[row][column + 1] != ' ' and \
-                       self._board[row][column + 1] not in self._current_faller['jewels']:
-                        return
-                
-                self._clear_previous_position()
-
-                self._current_faller['column'] += 1
-                for i, jewel in enumerate(self._current_faller['jewels'][::-1]):
-                    row = self._current_faller['position'] - i
-                    if row >= 0:
-                        self._board[row][column + 1] = f'[{jewel}]'
-                        
-                self._faller_should_freeze = False
-        else:
+        if self.can_move_to_next_right_column():
+            self._clear_previous_position()
+            self._current_faller['column'] += 1
+            self._update_new_position()
+            self._faller_should_freeze = False
+            if self._is_current_faller_landed():
+                self.current_faller_change_jewel_if_fallen()
+        elif self._faller_should_freeze:
             self.freeze_current_faller()
 
     def rotate_faller(self) -> None:
@@ -176,9 +158,11 @@ class ColumnsGame:
 
             return False
 
-    def can_move_to_next_column(self) -> bool:
+
+
+    def can_move_to_next_left_column(self) -> bool:
         '''
-        Check if the faller can move to the next column (either left or right).
+        Check if the faller can move to the next left column.
         '''
         if self._current_faller is None:
             return False
@@ -186,15 +170,51 @@ class ColumnsGame:
         position = self._current_faller['position']
         column = self._current_faller['column']
 
-        if column + 1 < self._columns:  
-            if position + 1 < self._rows and self._board[position + 1][column + 1] == ' ':
-                return True  
+        
+        if position + 1 >= self._rows:
+            return False
 
-        if column - 1 >= 0:  
-            if position + 1 < self._rows and self._board[position + 1][column - 1] == ' ':
-                return True  
-        return False 
-   
+        if column == 0:
+            return False
+
+        if self._board[position][column - 1] != ' ':
+            return False
+        
+        if column > 0:  # Not at the leftmost column
+            for i in range(3):
+                row = position - i
+                if row >= 0 and self._board[row][column - 1] != ' ' and self._board[row][column - 1] not in self._current_faller['jewels']:
+                    return False
+
+        return True
+
+    def can_move_to_next_right_column(self) -> bool:
+        '''
+        Check if the faller can move to the next right column.
+        '''
+        if self._current_faller is None:
+            return False
+
+        position = self._current_faller['position']
+        column = self._current_faller['column']
+
+        if position + 1 >= self._rows:
+            return False
+
+        if column == self._columns - 1:
+            return False
+
+        if self._board[position][column + 1] != ' ':
+            return False
+
+        if column < self._columns - 1:  # Not at the rightmost column
+            for i in range(3):
+                row = position - i
+                if row >= 0 and self._board[row][column + 1] != ' ' and self._board[row][column + 1] not in self._current_faller['jewels']:
+                    return False
+
+        return True
+
     def update_game(self) -> None:
         '''
         Updates the game state. If there are any marked matches, they are removed.
@@ -218,7 +238,7 @@ class ColumnsGame:
         elif self._is_current_faller_landed():
             if self._faller_should_freeze:
                 self.freeze_current_faller()
-            elif self.can_move_to_next_column():
+            elif self.can_move_to_next_right_column() or self.can_move_to_next_left_column():
                 self.postpone_freeze()
             else:
                 self.freeze_current_faller()
